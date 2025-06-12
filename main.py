@@ -3,19 +3,17 @@ import mediapipe as mp
 import numpy as np
 from tensorflow.keras.models import load_model
 
-# Вчитај го тренираниот модел
 model = load_model('gesture_model.h5')
 
-# Mediapipe за детекција на раце
 mpHands = mp.solutions.hands
 hands = mpHands.Hands()
 mpDraw = mp.solutions.drawing_utils
 
-# Камера
 cam = cv2.VideoCapture(0)
 
-# Листи за мапирање на класи
-classes = ["", "1", "2", "3", "4", "5", "6", "7", "8", "9", "0", "+", "-", "*", "/", "="]
+classes = [
+    "0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "+", "-", "*", "/", "=", ""
+]
 text = ""
 
 while True:
@@ -28,28 +26,23 @@ while True:
         for handLms in results.multi_hand_landmarks:
             x, y = [], []
 
-            # Екстракција на координати
             for lm in handLms.landmark:
                 h, w, c = imgg.shape
                 x.append(int(lm.x * w))
                 y.append(int(lm.y * h))
 
-            # Подготовка на ROI (Region of Interest)
             xmin, xmax = min(x) - 20, max(x) + 20
             ymin, ymax = min(y) - 20, max(y) + 20
-            roi = imgg[ymin:ymax, xmin:xmax]
+            gesture_image = imgg[ymin:ymax, xmin:xmax]
 
-            # Преобразба за моделот
-            roi_resized = cv2.resize(roi, (128, 128))
-            roi_resized = roi_resized / 255.0
-            roi_resized = np.expand_dims(roi_resized, axis=0)
+            processed_gesture = cv2.resize(gesture_image, (128, 128))
+            processed_gesture = processed_gesture / 255.0
+            processed_gesture = np.expand_dims(processed_gesture, axis=0)
 
-            # Препознавање на гест
-            predictions = model.predict(roi_resized)
+            predictions = model.predict(processed_gesture)
             class_id = np.argmax(predictions)
             gesture = classes[class_id]
 
-            # Ажурирање на текстот
             if gesture == "=":
                 try:
                     text = str(eval(text))
@@ -60,7 +53,6 @@ while True:
 
             mpDraw.draw_landmarks(imgg, handLms, mpHands.HAND_CONNECTIONS)
 
-    # Прикажување на текстот
     cv2.putText(imgg, text, (60, 80), cv2.FONT_HERSHEY_PLAIN, 3, (0, 255, 0), 5)
     cv2.imshow("Cam", imgg)
     if cv2.waitKey(1) & 0xFF == ord('q'):
